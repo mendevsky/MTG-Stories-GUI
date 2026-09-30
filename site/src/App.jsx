@@ -1,53 +1,61 @@
 import { useEffect, useState } from "react";
-import CollectionCard from "./components/CollectionCard";
+import { Link, Route, Routes } from "react-router-dom";
+import HomePage from "./pages/HomePage";
+import CollectionPage from "./pages/CollectionPage";
+import NotFoundPage from "./pages/NotFoundPage";
+
+const RELEASES_URL = "https://github.com/polarkac/MTG-Stories/releases";
 
 export default function App() {
-  // State: values React remembers. Calling a setter re-renders the page.
   const [collections, setCollections] = useState([]);
   const [error, setError] = useState(null);
-  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  // Runs once, after the first render (the empty [] at the end means
-  // "no dependencies", so it never runs again).
   useEffect(() => {
-    // BASE_URL is "/" in development; it will matter when we deploy to a subpath.
     fetch(`${import.meta.env.BASE_URL}catalog.json`)
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       })
       .then((data) => setCollections(data.collections))
-      .catch((err) => setError(err.message));
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false)); // runs on success and on failure
   }, []);
-
-  // Derived data: computed on every render from the state above.
-  const normalizedQuery = query.trim().toLowerCase();
-  const visibleCollections = collections.filter((collection) =>
-    collection.name.toLowerCase().includes(normalizedQuery)
-  );
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100">
+      <header className="border-b border-slate-800">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+          <Link to="/" className="text-2xl font-bold hover:text-amber-400 text-center">
+            MTG Stories
+          </Link>
+          {/* External links use a normal <a>; <Link> is only for pages of this site. */}
+          <a
+            href={RELEASES_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm text-amber-400 hover:underline"
+          >
+            Download PDFs/EPUBs
+          </a>
+        </div>
+      </header>
+
       <main className="mx-auto max-w-5xl px-4 py-8">
-        <h1 className="text-3xl font-bold text-center">MTG Stories</h1>
-
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search collections..."
-          className="mt-6 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 outline-none focus:border-amber-400"
-        />
-
+        {loading && <p className="text-slate-400">Loading catalog...</p>}
         {error && (
-          <p className="mt-6 text-red-400">Could not load the catalog: {error}</p>
+          <p className="text-red-400">Could not load the catalog: {error}</p>
         )}
-
-        <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleCollections.map((collection) => (
-            <CollectionCard key={collection.slug} collection={collection} />
-          ))}
-        </ul>
+        {!loading && !error && (
+          <Routes>
+            <Route path="/" element={<HomePage collections={collections} />} />
+            <Route
+              path="/collection/:slug"
+              element={<CollectionPage collections={collections} />}
+            />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        )}
       </main>
     </div>
   );
